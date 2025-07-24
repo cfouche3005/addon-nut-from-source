@@ -1,17 +1,16 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:7.8.3
-# hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
 ###############################################################################
-# Build and install Network UPS Tools 2.8.3 from source (EcoFlow support)
+# Build and install Network UPS Tools 2.8.3 (EcoFlow support)
 ###############################################################################
 ARG NUT_VERSION=2.8.3
 
-# 1. Install build dependencies (≈150 MB, later removed)
+# 1. Build dependencies + curl (curl must stay) 🔹
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        curl \
+        curl \                    # ← keep
         pkg-config \
         libssl-dev \
         libusb-1.0-0-dev \
@@ -19,12 +18,11 @@ RUN apt-get update && \
         libsystemd-dev \
         usbutils
 
-# 2. Fetch, compile, and install NUT
+# 2. Compile & install
 RUN curl -fsSL https://networkupstools.org/source/2.8/nut-${NUT_VERSION}.tar.gz \
         | tar xz -C /tmp && \
     cd /tmp/nut-${NUT_VERSION} && \
-    ./configure --prefix=/usr \
-                --sysconfdir=/etc/nut \
+    ./configure --prefix=/usr --sysconfdir=/etc/nut \
                 --with-usb --with-snmp --with-openssl --with-systemd \
                 --without-doc && \
     make -j"$(nproc)" && \
@@ -32,16 +30,19 @@ RUN curl -fsSL https://networkupstools.org/source/2.8/nut-${NUT_VERSION}.tar.gz 
     ldconfig && \
     cd / && rm -rf /tmp/nut-${NUT_VERSION}
 
-# 3. Remove build toolchain to keep the final image lean
+# 3. Create run-time dir expected by init script 🔹
+RUN install -d -o root -g root /var/run/nut
+
+# 4. Remove ONLY heavy build toolchain, keep curl 🔹
 RUN apt-get purge -y --auto-remove \
-        build-essential curl pkg-config \
+        build-essential pkg-config \
         libssl-dev libusb-1.0-0-dev libsnmp-dev libsystemd-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Optional: show NUT version in the build log
+# Optional: print version
 RUN /usr/sbin/upsdrvctl -V || true
 
-# Copy root filesystem (unchanged)
+# Copy rootfs from repo (unchanged)
 COPY rootfs /
 
 ###############################################################################
