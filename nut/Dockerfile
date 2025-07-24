@@ -10,7 +10,7 @@ ARG NUT_VERSION=2.8.3
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        curl \                    # ← keep
+        curl \
         pkg-config \
         libssl-dev \
         libusb-1.0-0-dev \
