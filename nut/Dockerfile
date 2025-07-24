@@ -3,34 +3,50 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:7.8.3
 FROM ${BUILD_FROM}
 
 ###############################################################################
-# 1. Add the Debian “experimental” repo and pin it with low priority (90)
-#    so only the packages we explicitly request come from there.
+# Build and install Network UPS Tools 2.8.3 from source (EcoFlow support)
 ###############################################################################
-RUN echo "deb http://deb.debian.org/debian experimental main" \
-        > /etc/apt/sources.list.d/experimental.list \
-    && printf "Package: *\nPin: release a=experimental\nPin-Priority: 90\n" \
-        > /etc/apt/preferences.d/experimental
+ARG NUT_VERSION=2.8.3
 
-###############################################################################
-# 2. Install NUT 2.8.3 (+ USB utils) from experimental.
-###############################################################################
-# hadolint ignore=DL3003
-RUN apt-get update \
-    && apt-get -t experimental install -y --no-install-recommends \
-        nut \
-        nut-snmp \
-        nut-xml \
-        usbutils \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# 1. Install build dependencies (≈150 MB, later removed)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        pkg-config \
+        libssl-dev \
+        libusb-1.0-0-dev \
+        libsnmp-dev \
+        libsystemd-dev \
+        usbutils
 
-# Optional: print the NUT version to the build log for easy verification
+# 2. Fetch, compile, and install NUT
+RUN curl -fsSL https://networkupstools.org/source/2.8/nut-${NUT_VERSION}.tar.gz \
+        | tar xz -C /tmp && \
+    cd /tmp/nut-${NUT_VERSION} && \
+    ./configure --prefix=/usr \
+                --sysconfdir=/etc/nut \
+                --with-usb --with-snmp --with-openssl --with-systemd \
+                --without-doc && \
+    make -j"$(nproc)" && \
+    make install-strip && \
+    ldconfig && \
+    cd / && rm -rf /tmp/nut-${NUT_VERSION}
+
+# 3. Remove build toolchain to keep the final image lean
+RUN apt-get purge -y --auto-remove \
+        build-essential curl pkg-config \
+        libssl-dev libusb-1.0-0-dev libsnmp-dev libsystemd-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Optional: show NUT version in the build log
 RUN /usr/sbin/upsdrvctl -V || true
 
-# Copy root filesystem
+# Copy root filesystem (unchanged)
 COPY rootfs /
 
-# Build arguments
+###############################################################################
+# Labels (unchanged)
+###############################################################################
 ARG BUILD_ARCH
 ARG BUILD_DATE
 ARG BUILD_DESCRIPTION
@@ -39,7 +55,6 @@ ARG BUILD_REF
 ARG BUILD_REPOSITORY
 ARG BUILD_VERSION
 
-# Labels
 LABEL \
     io.hass.name="${BUILD_NAME}" \
     io.hass.description="${BUILD_DESCRIPTION}" \
