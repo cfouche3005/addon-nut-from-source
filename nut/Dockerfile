@@ -2,17 +2,30 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:7.8.3
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
-# Setup base
+###############################################################################
+# 1. Add the Debian “experimental” repo and pin it with low priority (90)
+#    so only the packages we explicitly request come from there.
+###############################################################################
+RUN echo "deb http://deb.debian.org/debian experimental main" \
+        > /etc/apt/sources.list.d/experimental.list \
+    && printf "Package: *\nPin: release a=experimental\nPin-Priority: 90\n" \
+        > /etc/apt/preferences.d/experimental
+
+###############################################################################
+# 2. Install NUT 2.8.3 (+ USB utils) from experimental.
+###############################################################################
 # hadolint ignore=DL3003
-RUN \
-    apt-get update \
-    && apt-get install -y --no-install-recommends\
-        nut=2.8.0-7 \
-        nut-snmp=2.8.0-7 \
-        nut-xml=2.8.0-7 \
-        usbutils=1:014-1+deb12u1 \
+RUN apt-get update \
+    && apt-get -t experimental install -y --no-install-recommends \
+        nut \
+        nut-snmp \
+        nut-xml \
+        usbutils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Optional: print the NUT version to the build log for easy verification
+RUN /usr/sbin/upsdrvctl -V || true
 
 # Copy root filesystem
 COPY rootfs /
