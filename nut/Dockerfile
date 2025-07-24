@@ -16,7 +16,8 @@ RUN apt-get update && \
         libusb-1.0-0-dev \
         libsnmp-dev \
         libsystemd-dev \
-        usbutils
+        usbutils \
+        libwrap0
 
 # 2. Compile & install
 RUN curl -fsSL https://networkupstools.org/source/2.8/nut-${NUT_VERSION}.tar.gz \
