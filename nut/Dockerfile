@@ -31,7 +31,7 @@ RUN curl -fsSL https://networkupstools.org/source/2.8/nut-${NUT_VERSION}.tar.gz 
     cd / && rm -rf /tmp/nut-${NUT_VERSION}
 
 # 3. Create run-time dir expected by init script 🔹
-RUN install -d -o root -g root /var/run/nut
+RUN install -d -o root -g root /var/run/nut /var/state/ups
 
 # 4. Remove ONLY heavy build toolchain, keep curl 🔹
 RUN apt-get purge -y --auto-remove \
