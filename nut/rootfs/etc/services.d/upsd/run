@@ -8,4 +8,5 @@ if ! bashio::config.equals 'mode' 'netserver' ;then
 fi
 
 bashio::log.info "Starting the UPS information server..."
+export NUT_QUIET_INIT_UPSNOTIFY=$(bashio::config.true 'nut_quiet_init_upsnotify' && echo true || echo false)
 exec upsd -D -u root
