@@ -18,6 +18,15 @@ chown -R root:root /etc/nut
 find /etc/nut -not -perm 0660 -type f -exec chmod 0660 {} \;
 find /etc/nut -not -perm 0660 -type d -exec chmod 0660 {} \;
 
+# Set NUT_QUIET_INIT_UPSNOTIFY environment variable
+if bashio::config.true 'nut_quiet_init_upsnotify'; then
+    export NUT_QUIET_INIT_UPSNOTIFY=true
+    bashio::log.info "Setting NUT_QUIET_INIT_UPSNOTIFY=true"
+else
+    export NUT_QUIET_INIT_UPSNOTIFY=false
+    bashio::log.info "Setting NUT_QUIET_INIT_UPSNOTIFY=false"
+fi
+
 nutmode=$(bashio::config 'mode')
 bashio::log.info "Setting mode to ${nutmode}..."
 sed -i "s#%%nutmode%%#${nutmode}#g" /etc/nut/nut.conf
