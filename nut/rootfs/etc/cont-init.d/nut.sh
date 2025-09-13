@@ -18,18 +18,18 @@ chown -R root:root /etc/nut
 find /etc/nut -not -perm 0660 -type f -exec chmod 0660 {} \;
 find /etc/nut -not -perm 0660 -type d -exec chmod 0660 {} \;
 
-# Set NUT_QUIET_INIT_UPSNOTIFY environment variable
-if bashio::config.true 'nut_quiet_init_upsnotify'; then
-    export NUT_QUIET_INIT_UPSNOTIFY=true
-    bashio::log.info "Setting NUT_QUIET_INIT_UPSNOTIFY=true"
-else
-    export NUT_QUIET_INIT_UPSNOTIFY=false
-    bashio::log.info "Setting NUT_QUIET_INIT_UPSNOTIFY=false"
-fi
-
 nutmode=$(bashio::config 'mode')
 bashio::log.info "Setting mode to ${nutmode}..."
 sed -i "s#%%nutmode%%#${nutmode}#g" /etc/nut/nut.conf
+
+# Set NUT_QUIET_INIT_UPSNOTIFY in nut.conf
+if bashio::config.true 'nut_quiet_init_upsnotify'; then
+    sed -i "s#%%nut_quiet_init_upsnotify%%#true#g" /etc/nut/nut.conf
+    bashio::log.info "Setting NUT_QUIET_INIT_UPSNOTIFY=true in nut.conf"
+else
+    sed -i "s#%%nut_quiet_init_upsnotify%%#false#g" /etc/nut/nut.conf
+    bashio::log.info "Setting NUT_QUIET_INIT_UPSNOTIFY=false in nut.conf"
+fi
 
 if bashio::config.true 'list_usb_devices' ;then
     bashio::log.info "Connected USB devices:"
