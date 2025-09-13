@@ -1,18 +1,44 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:8.0.0
-# hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
-# Setup base
-# hadolint ignore=DL3003
-RUN \
-    apt-get update \
-    && apt-get install -y --no-install-recommends\
-        nut=2.8.1-5 \
-        nut-snmp=2.8.1-5 \
-        nut-xml=2.8.1-5 \
-        usbutils=1:018-2 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ARG NUT_VERSION=2.8.4
+
+# Build and install NUT from source
+# 1. Build dependencies + curl (curl must stay) 🔹
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        pkg-config \
+        libssl-dev \
+        libusb-1.0-0-dev \
+        libsnmp-dev \
+        usbutils \
+        libwrap0
+
+# 2. Compile & install
+RUN curl -fsSL https://networkupstools.org/source/2.8/nut-${NUT_VERSION}.tar.gz \
+        | tar xz -C /tmp && \
+    cd /tmp/nut-${NUT_VERSION} && \
+    ./configure --prefix=/usr --sysconfdir=/etc/nut \
+                --with-usb --with-snmp --with-openssl \
+                --without-doc && \
+    make -j"$(nproc)" && \
+    make install-strip && \
+    ldconfig && \
+    cd / && rm -rf /tmp/nut-${NUT_VERSION}
+
+# 3. Create run-time dir expected by init script 🔹
+RUN install -d -o root -g root /var/run/nut /var/state/ups
+
+# 4. Remove ONLY heavy build toolchain, keep curl 🔹
+RUN apt-get purge -y --auto-remove \
+        build-essential pkg-config \
+        libssl-dev libusb-1.0-0-dev libsnmp-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Optional: print version
+RUN /usr/sbin/upsdrvctl -V || true
 
 # Copy root filesystem
 COPY rootfs /
